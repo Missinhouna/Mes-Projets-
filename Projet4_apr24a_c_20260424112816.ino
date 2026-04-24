@@ -2,7 +2,8 @@
   Projet IoT – Monitoring Environnemental
   Capteurs : DHT22 (température/humidité) + MQ-135 (CO2/qualité air)
   Envoi vers ThingSpeak (channel 3356600)
-  Option : écran LCD I2C 16x2 + relais d'alarme
+  Option : écran LCD I2C 16x2 + relais d'alarme + LED indication visuelle
+  Sécurité : LED avec résistance 220Ω en série sur GPIO12
 */
 
 #include <WiFi.h>
@@ -28,6 +29,9 @@ const char* myWriteAPIKey = "YTRTROPLOXC27IRS";   // Write API Key
 #define RELAIS_PIN 13     // Relais sur GPIO13
 #define SEUIL_CO2 1000    // ppm (valeur analogique brute, à calibrer)
 
+// Option : LED d'alarme (avec résistance 220Ω en série)
+#define LED_ALARME_PIN 12 // LED sur GPIO12 (anode via résistance 220Ω vers broche, cathode vers GND)
+
 // Option : écran LCD I2C (adresse typique 0x27 ou 0x3F)
 #define LCD_ADDRESS 0x27
 #define LCD_COLUMNS 16
@@ -51,7 +55,9 @@ void setup() {
   dht.begin();
   pinMode(MQ135_PIN, INPUT);
   pinMode(RELAIS_PIN, OUTPUT);
-  digitalWrite(RELAIS_PIN, LOW);  // Relais éteint au départ
+  pinMode(LED_ALARME_PIN, OUTPUT);   // Configuration de la LED
+  digitalWrite(RELAIS_PIN, LOW);     // Relais éteint au départ
+  digitalWrite(LED_ALARME_PIN, LOW); // LED éteinte au départ
 
   // Initialisation LCD (optionnel)
   Wire.begin();
@@ -88,14 +94,16 @@ void loop() {
   lireCapteurs();
   afficherLCD();
 
-  // Gestion de l'alarme (si CO2 dépasse seuil)
+  // Gestion de l'alarme (si CO2 dépasse seuil) : allume relais ET LED
   if (valeurCO2 > SEUIL_CO2) {
     digitalWrite(RELAIS_PIN, HIGH);
+    digitalWrite(LED_ALARME_PIN, HIGH);   // Allume la LED
     Serial.println("⚠️ Alarme CO2 déclenchée !");
     lcd.setCursor(0, 1);
     lcd.print("ALARME CO2  ");
   } else {
     digitalWrite(RELAIS_PIN, LOW);
+    digitalWrite(LED_ALARME_PIN, LOW);    // Éteint la LED
   }
 
   // Envoi périodique vers ThingSpeak
